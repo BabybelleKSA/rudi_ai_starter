@@ -1,0 +1,128 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Rudi AI Starter – Demo</title>
+  <style>
+    :root { --ok:#12b886; --warn:#f59f00; --bad:#e03131; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 24px; max-width: 900px; margin: auto; background:#fafafa;}
+    .row{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start}
+    .card { background:#fff; border: 1px solid #eee; border-radius: 16px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .btn { padding: 10px 16px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; background:#fff; }
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    pre { background: #111; color: #0f0; padding: 12px; border-radius: 12px; overflow:auto; max-height:50vh;}
+    .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+    .kpi{border:1px solid #eee;border-radius:12px;padding:12px}
+    .kpi h4{margin:0 0 6px 0;font-size:13px;color:#666}
+    .value{font-size:20px;font-weight:700}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+    .status{font-weight:700;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h1>Rudi AI Starter</h1>
+  <p>Upload a <b>short MP4</b> drum practice video to see analysis.</p>
+
+  <div class="row">
+    <div class="card">
+      <input type="file" id="file" accept="video/mp4,video/mov,video/quicktime" />
+      <button class="btn" id="go" onclick="send()">Analyze</button>
+      <span id="status" style="margin-left:10px;"></span>
+
+      <div id="score" style="margin-top:16px;display:none">
+        <h3>Coach Summary</h3>
+        <div class="kpis">
+          <div class="kpi"><h4>Avg Timing Offset</h4><div class="value" id="avg"></div><div id="avgNote" class="status"></div></div>
+          <div class="kpi"><h4>Timing Spread (STD)</h4><div class="value" id="std"></div></div>
+          <div class="kpi"><h4>Median Stroke Height</h4><div class="value" id="med"></div></div>
+          <div class="kpi"><h4>Height Consistency</h4><div class="value" id="cons"></div></div>
+          <div class="kpi"><h4>Detected Hits</h4><div class="value" id="hits"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Raw Result</h3>
+      <pre id="out"></pre>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://127.0.0.1:5000/analyze';
+
+    function msLabel(ms){
+      const sign = ms>0 ? 'late' : 'early';
+      return `${Math.abs(ms).toFixed(0)} ms ${sign}`;
+    }
+    function bandClass(ms){
+      const a = Math.abs(ms);
+      if (a <= 30) return 'ok';
+      if (a <= 120) return 'warn';
+      return 'bad';
+    }
+
+    async function send(){
+      const btn = document.getElementById('go');
+      const f = document.getElementById('file').files[0];
+      const status = document.getElementById('status');
+      const out = document.getElementById('out');
+      const score = document.getElementById('score');
+      if(!f){ alert('Choose a video file'); return; }
+
+      const body = new FormData();
+      body.append('file', f, f.name);
+
+      btn.disabled = true;
+      status.textContent = 'Uploading & analyzing...';
+
+      try {
+        const res = await fetch(API, { method: 'POST', body });
+        if(!res.ok){
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status} – ${txt}`);
+        }
+        const json = await res.json();
+        out.textContent = JSON.stringify(json, null, 2);
+
+        // Show summary
+        const s = json.summary || {};
+        const avg = s.avg_offset_ms ?? 0;
+        const std = s.offset_std_ms ?? 0;
+        const med = s.median_height_norm ?? 0;
+        const cons = s.height_consistency ?? 0;
+        const hits = s.num_hits ?? (json.per_hit ? json.per_hit.length : 0);
+
+        const avgEl = document.getElementById('avg');
+        const stdEl = document.getElementById('std');
+        const medEl = document.getElementById('med');
+        const consEl = document.getElementById('cons');
+        const hitsEl = document.getElementById('hits');
+        const avgNote = document.getElementById('avgNote');
+
+        avgEl.textContent = msLabel(avg);
+        avgEl.className = 'value ' + bandClass(avg);
+        stdEl.textContent = `${std.toFixed(0)} ms`;
+        medEl.textContent = med.toFixed(2);
+        consEl.textContent = (cons*100).toFixed(0) + '%';
+        hitsEl.textContent = hits;
+
+        const absAvg = Math.abs(avg);
+        let note;
+        if (absAvg <= 30) note = 'Locked in ⛓️';
+        else if (absAvg <= 120) note = 'Close — micro-tune timing 🎯';
+        else note = 'Big drift — slow it down & subdivide 🧭';
+        avgNote.textContent = note;
+
+        score.style.display = 'block';
+        status.textContent = 'Done.';
+      } catch (err){
+        out.textContent = String(err);
+        status.textContent = 'Error.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

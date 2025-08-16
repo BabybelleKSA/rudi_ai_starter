@@ -1,0 +1,32 @@
+﻿# Python
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual env
+backend/.venv/
+
+# Uploads / large media
+backend/uploads/
+*.mp4
+*.mov
+
+# Node / logs
+frontend/node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.code-workspace
+
+# Build artifacts
+dist/
+build/
