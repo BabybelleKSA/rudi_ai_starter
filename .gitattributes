@@ -1,0 +1,11 @@
+﻿* text=auto
+
+# Windows scripts use CRLF
+*.ps1 text eol=crlf
+
+# Code/docs normalized to LF in repo
+*.py   text eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
