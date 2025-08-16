@@ -30,3 +30,6 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+
+# Secrets
+backend/.env
